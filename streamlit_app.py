@@ -54,18 +54,19 @@ n_sims = st.sidebar.slider(
 )
 
 st.sidebar.subheader("📐 Model Parameters")
+# Povećane podrazumijevane vrijednosti za bolju vidljivost skokova
 jump_intensity = st.sidebar.slider(
     "Jump intensity:",
     min_value=0.0,
     max_value=1.0,
-    value=0.05,
+    value=0.1,          # malo veći od 0.05
     step=0.01
 )
 gamma_multiplier = st.sidebar.slider(
     "Gamma multiplier (contagion):",
     min_value=0.0,
     max_value=3.0,
-    value=0.3,
+    value=0.5,          # malo veći od 0.3
     step=0.1
 )
 recovery_base = st.sidebar.slider(
@@ -127,7 +128,7 @@ scenario_modifiers = {
     }
 }
 
-# ---------- Helper: generate paths ----------
+# ---------- Helper: generate paths (ISPRAVLJENO za vidljivost λ) ----------
 def generate_paths_for_scenario(model_base, mods, tickers, selected_tickers):
     N = model_base.N
     corr = model_base.corr_assets
@@ -194,11 +195,15 @@ def generate_paths_for_scenario(model_base, mods, tickers, selected_tickers):
                                  line=dict(color='black', dash='dash')),
                       row=1, col=1)
     
+    # ========== POPRAVKA: y-osa za λ ==========
     max_lambda = np.nanmax(lam[:, selected_indices]) if selected_indices else 0.01
-    if max_lambda > 0:
-        fig.update_yaxes(range=[0, max_lambda * 1.2], row=2, col=1)
-    else:
-        fig.update_yaxes(range=[0, 0.05], row=2, col=1)
+    # Uvijek prikaži bar do 0.05 – da se vidi bazna vrijednost
+    y_max = max(max_lambda * 1.2, 0.05)
+    fig.update_yaxes(range=[0, y_max], row=2, col=1)
+    
+    # Dodaj horizontalnu liniju za bazni intenzitet (0.01) kao referencu
+    fig.add_hline(y=0.01, line_dash="dot", line_color="gray",
+                  annotation_text="base μ", row=2, col=1)
     
     fig.update_layout(height=600, width=1000, showlegend=True)
     return fig
