@@ -31,10 +31,14 @@ class MarketDataExtractor50:
         # Pokušaj batch download (brže)
         try:
             stock_data = yf.download(tickers, start=start_date, end=end_date, group_by='ticker', progress=False)
+            
             # Ako je samo jedan ticker, yfinance vraća DataFrame, ne dict
             if len(tickers) == 1:
                 # Tada je stock_data DataFrame, ali ga treba pretvoriti u dict sa tickerom kao ključem
-                stock_data = {tickers[0]: stock_data}
+                if not stock_data.empty:
+                    stock_data = {tickers[0]: stock_data}
+                else:
+                    stock_data = {}
         except Exception as e:
             print(f"⚠️ Batch download neuspješan: {e}")
             stock_data = {}
