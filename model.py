@@ -6,46 +6,57 @@ from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings("ignore")
 
-# ---------- ROBUSTNA KOREKCIJA: iterativno dodavanje šifta ----------
+# ---------- ROBUSTNA KOREKCIJA: čisti NaN/Inf i dodaje šift ----------
 def nearest_positive_definite(A, max_iter=100, eps_start=1e-8):
     """
-    Vraća pozitivno definitnu matricu tako što iterativno dodaje dijagonalni šift
-    sve dok Cholesky dekompozicija ne uspije.
+    Vraća pozitivno definitnu korelacionu matricu.
+    Uklanja NaN/Inf, dodaje dijagonalni šift po potrebi,
+    i normalizuje dijagonalu na 1.
     """
     A = np.asarray(A, dtype=float)
-    # Simetriziramo
+    # 1. Očisti NaN i Inf
+    A = np.nan_to_num(A, nan=0.0, posinf=1.0, neginf=-1.0)
+    # 2. Simetriziramo
     A = (A + A.T) / 2
+    # 3. Osiguraj da dijagonala bude barem eps_start
+    np.fill_diagonal(A, np.maximum(np.diag(A), eps_start))
 
-    # Specijalni slučaj: 1x1
     if A.shape[0] == 1:
         return np.array([[1.0]])
 
     eps = eps_start
-    for i in range(max_iter):
+    for _ in range(max_iter):
         try:
             # Pokušaj Cholesky
             L = np.linalg.cholesky(A)
-            # Uspješno – vrati A
-            # Ovdje bi mogli da normalizujemo dijagonalu na 1, ali Cholesky radi sa bilo kojom pozitivnom
-            # Ako želimo da dijagonala bude 1 (za korelacionu matricu), uradimo to:
+            # Uspješno – normalizuj dijagonalu na 1
             d = np.sqrt(np.diag(A))
+            d = np.maximum(d, eps_start)
             A_norm = A / np.outer(d, d)
-            # Ponovo provjeri Cholesky za normalizovanu
+            # Ponovo provjeri Cholesky na normalizovanoj
             try:
                 L = np.linalg.cholesky(A_norm)
+                # Očisti NaN/Inf (sigurnosno)
+                A_norm = np.nan_to_num(A_norm, nan=0.0, posinf=1.0, neginf=-1.0)
+                # Osiguraj dijagonalu = 1
+                np.fill_diagonal(A_norm, 1.0)
                 return A_norm
             except:
-                # Ako normalizacija pokvari, vrati original
+                # Ako normalizacija pokvari, vrati original (već je PD)
+                A = np.nan_to_num(A, nan=0.0, posinf=1.0, neginf=-1.0)
                 return A
         except np.linalg.LinAlgError:
-            # Dodaj šift
+            # Dodaj šift i pokušaj ponovo
             A += eps * np.eye(A.shape[0])
-            eps *= 2  # eksponencijalno povećavaj
+            eps *= 2
 
-    # Krajnja mjera: dodaj veliki šift i normalizuj
+    # Krajnja mjera: veliki šift
     A += 1e-3 * np.eye(A.shape[0])
     d = np.sqrt(np.diag(A))
+    d = np.maximum(d, eps_start)
     A = A / np.outer(d, d)
+    A = np.nan_to_num(A, nan=0.0, posinf=1.0, neginf=-1.0)
+    np.fill_diagonal(A, 1.0)
     return A
 
 
@@ -150,11 +161,24 @@ class HawkesMertonContagion:
         return V0_cal, vol_cal
 
     def _prepare_cholesky(self):
-        """Priprema Cholesky faktorizaciju, sa oporavkom od grešaka."""
+        """Priprema Cholesky faktorizaciju, sa višestrukim oporavkom od grešaka."""
         if self.N == 1:
-            # Jedna firma – nema korelacije
             self._L_assets = np.array([[1.0]])
             return
+
+        # Pomoćna funkcija za siguran Cholesky
+        def safe_cholesky(mat):
+            try:
+                return cholesky(mat, lower=True)
+            except Exception as e:
+                # Ako bilo koja greška (uključujući ValueError), dodaj šift
+                mat += 1e-6 * np.eye(mat.shape[0])
+                try:
+                    return cholesky(mat, lower=True)
+                except:
+                    # Još veći šift
+                    mat += 1e-4 * np.eye(mat.shape[0])
+                    return cholesky(mat, lower=True)
 
         if self.use_heston:
             dim = 2 * self.N + 1
@@ -166,11 +190,7 @@ class HawkesMertonContagion:
             corr_full[:self.N, -1] = self.rho_asset_rate
             corr_full[-1, :self.N] = self.rho_asset_rate
             corr_full = nearest_positive_definite(corr_full)
-            try:
-                self._L_heston = cholesky(corr_full, lower=True)
-            except np.linalg.LinAlgError:
-                corr_full += 1e-6 * np.eye(dim)
-                self._L_heston = cholesky(corr_full, lower=True)
+            self._L_heston = safe_cholesky(corr_full)
         else:
             if self.use_stochastic_rate:
                 dim = self.N + 1
@@ -179,18 +199,10 @@ class HawkesMertonContagion:
                 corr_full[:self.N, -1] = self.rho_asset_rate
                 corr_full[-1, :self.N] = self.rho_asset_rate
                 corr_full = nearest_positive_definite(corr_full)
-                try:
-                    self._L_gbm_rate = cholesky(corr_full, lower=True)
-                except np.linalg.LinAlgError:
-                    corr_full += 1e-6 * np.eye(dim)
-                    self._L_gbm_rate = cholesky(corr_full, lower=True)
+                self._L_gbm_rate = safe_cholesky(corr_full)
             else:
                 corr_assets = nearest_positive_definite(self.corr_assets)
-                try:
-                    self._L_assets = cholesky(corr_assets, lower=True)
-                except np.linalg.LinAlgError:
-                    corr_assets += 1e-6 * np.eye(self.N)
-                    self._L_assets = cholesky(corr_assets, lower=True)
+                self._L_assets = safe_cholesky(corr_assets)
 
     def simulate_single_path(self, return_paths=False):
         if (self._L_assets is None and self._L_gbm_rate is None and self._L_heston is None):
