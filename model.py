@@ -43,6 +43,7 @@ def nearest_positive_definite(A, epsilon=1e-8, max_shift=100):
     A_corr = A_corr / np.outer(d, d)
     return A_corr
 
+
 class HawkesMertonContagion:
     def __init__(self, n_companies, T=1.0, dt=1/252,
                  use_heston=False, use_stochastic_rate=False,
@@ -87,7 +88,7 @@ class HawkesMertonContagion:
         self._L_gbm_rate = None
         self._L_heston = None
         self.exposures = None
-        
+
         # Regime-Switching
         self.regime_switching = regime_switching
         if regime_switching:
