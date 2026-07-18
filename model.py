@@ -1,4 +1,3 @@
-# src/model.py
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -7,11 +6,38 @@ from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings("ignore")
 
-def nearest_positive_definite(A, epsilon=1e-8):
+# ---------- ROBUSTNA POZITIVNO DEFINITNA KOREKCIJA ----------
+def nearest_positive_definite(A, epsilon=1e-8, max_shift=100):
+    """
+    Vraća najbližu pozitivno definitnu matricu.
+    Ako eigendecomposition ne uspije, dodaje dijagonalni šift.
+    """
     A = np.asarray(A, dtype=float)
     A = (A + A.T) / 2
-    eigvals, eigvecs = np.linalg.eigh(A)
-    eigvals[eigvals < epsilon] = epsilon
+
+    # Ako je matrica 1x1, vrati [[1]]
+    if A.shape[0] == 1:
+        return np.array([[1.0]])
+
+    # Pokušaj sa postupnim povećanjem šifta
+    for shift in np.logspace(-8, 2, num=max_shift):
+        try:
+            A_shift = A + shift * np.eye(A.shape[0])
+            eigvals, eigvecs = np.linalg.eigh(A_shift)
+            if np.min(eigvals) > 0:
+                eigvals = np.maximum(eigvals, epsilon)
+                A_corr = eigvecs @ np.diag(eigvals) @ eigvecs.T
+                # Dijagonala na 1
+                d = np.sqrt(np.diag(A_corr))
+                A_corr = A_corr / np.outer(d, d)
+                return A_corr
+        except np.linalg.LinAlgError:
+            continue
+
+    # Krajnji slučaj – veliki šift
+    A_shift = A + 1e-3 * np.eye(A.shape[0])
+    eigvals, eigvecs = np.linalg.eigh(A_shift)
+    eigvals = np.maximum(eigvals, epsilon)
     A_corr = eigvecs @ np.diag(eigvals) @ eigvecs.T
     d = np.sqrt(np.diag(A_corr))
     A_corr = A_corr / np.outer(d, d)
@@ -118,6 +144,12 @@ class HawkesMertonContagion:
         return V0_cal, vol_cal
 
     def _prepare_cholesky(self):
+        """Priprema Cholesky faktorizaciju, sa oporavkom od grešaka."""
+        if self.N == 1:
+            # Jedna firma – nema korelacije
+            self._L_assets = np.array([[1.0]])
+            return
+
         if self.use_heston:
             dim = 2 * self.N + 1
             corr_full = np.eye(dim)
@@ -128,7 +160,11 @@ class HawkesMertonContagion:
             corr_full[:self.N, -1] = self.rho_asset_rate
             corr_full[-1, :self.N] = self.rho_asset_rate
             corr_full = nearest_positive_definite(corr_full)
-            self._L_heston = cholesky(corr_full, lower=True)
+            try:
+                self._L_heston = cholesky(corr_full, lower=True)
+            except np.linalg.LinAlgError:
+                corr_full += 1e-6 * np.eye(dim)
+                self._L_heston = cholesky(corr_full, lower=True)
         else:
             if self.use_stochastic_rate:
                 dim = self.N + 1
@@ -137,10 +173,18 @@ class HawkesMertonContagion:
                 corr_full[:self.N, -1] = self.rho_asset_rate
                 corr_full[-1, :self.N] = self.rho_asset_rate
                 corr_full = nearest_positive_definite(corr_full)
-                self._L_gbm_rate = cholesky(corr_full, lower=True)
+                try:
+                    self._L_gbm_rate = cholesky(corr_full, lower=True)
+                except np.linalg.LinAlgError:
+                    corr_full += 1e-6 * np.eye(dim)
+                    self._L_gbm_rate = cholesky(corr_full, lower=True)
             else:
                 corr_assets = nearest_positive_definite(self.corr_assets)
-                self._L_assets = cholesky(corr_assets, lower=True)
+                try:
+                    self._L_assets = cholesky(corr_assets, lower=True)
+                except np.linalg.LinAlgError:
+                    corr_assets += 1e-6 * np.eye(self.N)
+                    self._L_assets = cholesky(corr_assets, lower=True)
 
     def simulate_single_path(self, return_paths=False):
         if (self._L_assets is None and self._L_gbm_rate is None and self._L_heston is None):
