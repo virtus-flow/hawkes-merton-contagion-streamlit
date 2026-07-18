@@ -1,4 +1,3 @@
-# src/extractor.py
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -19,15 +18,36 @@ class MarketDataExtractor50:
     @staticmethod
     def fetch_equity_data(tickers, start_date, end_date):
         data = {}
-        stock_data = yf.download(tickers, start=start_date, end=end_date, group_by='ticker')
+        # ---------- POPRAVKA: Zamijeni tickere sa problematičnim znakovima ----------
+        ticker_map = {
+            'BRK-B': 'BRK-B',   # Ostavi kako jeste, ali yfinance ga prepoznaje
+            # Ako ne radi, probaj sa 'BRK.B'
+        }
+        # Konvertuj tickere u listu za preuzimanje
+        tickers_for_download = [ticker_map.get(t, t) for t in tickers]
+        
+        # Preuzmi sve tickere odjednom
+        stock_data = yf.download(tickers_for_download, start=start_date, end=end_date, group_by='ticker')
+        
         for ticker in tickers:
             try:
+                # Ako je ticker mapiran, koristi mapirani naziv za pristup podacima
+                download_ticker = ticker_map.get(ticker, ticker)
                 if len(tickers) == 1:
                     df = stock_data
                 else:
-                    df = stock_data[ticker]
+                    df = stock_data[download_ticker]
                 if df.empty:
-                    continue
+                    # Pokušaj sa alternativnim nazivom (npr. BRK-B -> BRK.B)
+                    if ticker == 'BRK-B':
+                        alt_ticker = 'BRK.B'
+                        if len(tickers) == 1:
+                            df = stock_data
+                        else:
+                            df = stock_data.get(alt_ticker, pd.DataFrame())
+                    if df.empty:
+                        print(f"⚠️ Nema podataka za {ticker}")
+                        continue
                 close = df['Close']
                 info = yf.Ticker(ticker).info
                 market_cap = info.get('marketCap')
@@ -45,7 +65,8 @@ class MarketDataExtractor50:
                     'prices': close,
                     'returns': returns
                 }
-            except:
+            except Exception as e:
+                print(f"⚠️ Greška za {ticker}: {e}")
                 continue
         return data
     
