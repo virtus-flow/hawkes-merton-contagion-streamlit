@@ -8,7 +8,6 @@ warnings.filterwarnings("ignore")
 class MarketDataExtractor50:
     @staticmethod
     def get_sp500_tickers(n=50):
-        # Ovo je samo default lista, ali korisnik može unijeti bilo šta
         sp500_top = [
             'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'META', 'BRK-B', 'LLY', 'AVGO', 'JPM',
             'V', 'TSLA', 'XOM', 'UNH', 'PG', 'MA', 'JNJ', 'HD', 'COST', 'MRK',
@@ -25,16 +24,11 @@ class MarketDataExtractor50:
         Podržava bilo koji ticker, čak i samo jedan.
         """
         data = {}
-        # Mapiranje za tickere sa posebnim znakovima (po potrebi)
-        # Yahoo Finance prepoznaje i 'BRK-B' i 'BRK.B', ali nekad batch download ima problem.
-        # Zato prvo pokušavamo batch, a ako ne uspije, idemo pojedinačno.
-        
-        # Ukloni prazne tickere
         tickers = [t.strip() for t in tickers if t.strip()]
         if not tickers:
             return data
         
-        # Pokušaj batch download
+        # Pokušaj batch download (brže)
         try:
             stock_data = yf.download(tickers, start=start_date, end=end_date, group_by='ticker', progress=False)
             # Ako je samo jedan ticker, yfinance vraća DataFrame, ne dict
@@ -48,6 +42,7 @@ class MarketDataExtractor50:
         # Za svaki ticker, izvuci podatke
         for ticker in tickers:
             try:
+                df = None
                 # Pokušaj dohvatiti DataFrame iz batch rezultata
                 if ticker in stock_data:
                     df = stock_data[ticker]
@@ -65,12 +60,15 @@ class MarketDataExtractor50:
                             print(f"⚠️ Nema podataka za {ticker}")
                             continue
                 
-                # Ako je df prazan, preskoči
-                if df.empty:
+                if df is None or df.empty:
                     print(f"⚠️ Nema podataka za {ticker}")
                     continue
                 
                 close = df['Close']
+                if close.empty or len(close) < 2:
+                    print(f"⚠️ Premalo podataka za {ticker}")
+                    continue
+                
                 # Pokušaj dobiti market cap
                 info = yf.Ticker(ticker).info
                 market_cap = info.get('marketCap')
