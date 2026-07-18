@@ -6,42 +6,47 @@ from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings("ignore")
 
-# ---------- ROBUSTNA POZITIVNO DEFINITNA KOREKCIJA ----------
-def nearest_positive_definite(A, epsilon=1e-8, max_shift=100):
+# ---------- ROBUSTNA KOREKCIJA: iterativno dodavanje šifta ----------
+def nearest_positive_definite(A, max_iter=100, eps_start=1e-8):
     """
-    Vraća najbližu pozitivno definitnu matricu.
-    Ako eigendecomposition ne uspije, dodaje dijagonalni šift.
+    Vraća pozitivno definitnu matricu tako što iterativno dodaje dijagonalni šift
+    sve dok Cholesky dekompozicija ne uspije.
     """
     A = np.asarray(A, dtype=float)
+    # Simetriziramo
     A = (A + A.T) / 2
 
-    # Ako je matrica 1x1, vrati [[1]]
+    # Specijalni slučaj: 1x1
     if A.shape[0] == 1:
         return np.array([[1.0]])
 
-    # Pokušaj sa postupnim povećanjem šifta
-    for shift in np.logspace(-8, 2, num=max_shift):
+    eps = eps_start
+    for i in range(max_iter):
         try:
-            A_shift = A + shift * np.eye(A.shape[0])
-            eigvals, eigvecs = np.linalg.eigh(A_shift)
-            if np.min(eigvals) > 0:
-                eigvals = np.maximum(eigvals, epsilon)
-                A_corr = eigvecs @ np.diag(eigvals) @ eigvecs.T
-                # Dijagonala na 1
-                d = np.sqrt(np.diag(A_corr))
-                A_corr = A_corr / np.outer(d, d)
-                return A_corr
+            # Pokušaj Cholesky
+            L = np.linalg.cholesky(A)
+            # Uspješno – vrati A
+            # Ovdje bi mogli da normalizujemo dijagonalu na 1, ali Cholesky radi sa bilo kojom pozitivnom
+            # Ako želimo da dijagonala bude 1 (za korelacionu matricu), uradimo to:
+            d = np.sqrt(np.diag(A))
+            A_norm = A / np.outer(d, d)
+            # Ponovo provjeri Cholesky za normalizovanu
+            try:
+                L = np.linalg.cholesky(A_norm)
+                return A_norm
+            except:
+                # Ako normalizacija pokvari, vrati original
+                return A
         except np.linalg.LinAlgError:
-            continue
+            # Dodaj šift
+            A += eps * np.eye(A.shape[0])
+            eps *= 2  # eksponencijalno povećavaj
 
-    # Krajnji slučaj – veliki šift
-    A_shift = A + 1e-3 * np.eye(A.shape[0])
-    eigvals, eigvecs = np.linalg.eigh(A_shift)
-    eigvals = np.maximum(eigvals, epsilon)
-    A_corr = eigvecs @ np.diag(eigvals) @ eigvecs.T
-    d = np.sqrt(np.diag(A_corr))
-    A_corr = A_corr / np.outer(d, d)
-    return A_corr
+    # Krajnja mjera: dodaj veliki šift i normalizuj
+    A += 1e-3 * np.eye(A.shape[0])
+    d = np.sqrt(np.diag(A))
+    A = A / np.outer(d, d)
+    return A
 
 
 class HawkesMertonContagion:
