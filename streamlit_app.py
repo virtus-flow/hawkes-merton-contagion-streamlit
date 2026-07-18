@@ -1,19 +1,14 @@
-# app/streamlit_app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import sys
-import os
 from datetime import datetime, timedelta
 
-# Dodaj src folder u path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from src.model import HawkesMertonContagion
-from src.extractor import MarketDataExtractor50
-from src.utils import run_monte_carlo_sequential
+# ---------- IMPORTI DIREKTNO IZ ROOT-A ----------
+from model import HawkesMertonContagion
+from extractor import MarketDataExtractor50
+from utils import run_monte_carlo_sequential
 
 # ---------- Konfiguracija stranice ----------
 st.set_page_config(
