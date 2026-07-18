@@ -477,7 +477,72 @@ if run_button:
             st.metric("Prosečna volatilnost", f"{np.mean(model.vol)*100:.1f}%")
             st.metric("Broj firmi sa DD < 2.5", f"{np.sum(dd < 2.5)}")
             st.metric("Broj firmi sa DD < 1.5", f"{np.sum(dd < 1.5)}")
-
+    # ================================================================
+        # RESOURCES / BIBLIOTEKA
+        # ================================================================
+        st.subheader("📚 Resources & Literature")
+        
+        with st.expander("📖 Ključne knjige i radovi", expanded=False):
+            st.markdown("""
+            ### 📕 Knjige
+            
+            | Knjiga | Autor | Godina | Opis |
+            |--------|-------|--------|------|
+            | **Options, Futures, and Other Derivatives** | John C. Hull | 2021 | Osnovni udžbenik za derivativne instrumente i modele vrednovanja |
+            | **Dynamic Asset Pricing Theory** | Darrell Duffie | 2001 | Matematički okvir za modeliranje cena imovine i rizika |
+            | **Credit Risk: Modeling, Valuation and Hedging** | Tomasz R. Bielecki, Marek Rutkowski | 2002 | Napredni modeli kreditnog rizika, uključujući strukturni pristup |
+            | **Fixed Income Securities** | Bruce Tuckman, Angel Serrat | 2011 | Detaljan pregled fiksnih prinosa i kreditnih spread-ova |
+            | **Risk Management and Financial Institutions** | John C. Hull | 2018 | Upravljanje rizikom u finansijskim institucijama |
+            
+            ### 📄 Ključni akademski radovi
+            
+            | Rad | Autor(i) | Godina | Ključni doprinos |
+            |-----|----------|--------|------------------|
+            | **On the Pricing of Corporate Debt: The Risk Structure of Interest Rates** | Robert C. Merton | 1974 | Osnovni strukturni model – imovina firme kao opcija |
+            | **A Theory of the Term Structure of Interest Rates** | John C. Cox, Jonathan E. Ingersoll, Stephen A. Ross | 1985 | CIR model kamatnih stopa |
+            | **A Jump-Diffusion Model for Asset Returns** | Chunsheng Zhou | 2001 | Jump-Diffusion model za kreditne spread-ove i korelacije default-a |
+            | **Do Credit Spreads Reflect Stationary Leverage?** | Pierre Collin-Dufresne, Robert S. Goldstein | 2001 | Dinamička barijera i stacionarni leveridž |
+            | **Term Structures of Credit Spreads with Incomplete Accounting Information** | Darrell Duffie, David Lando | 2001 | Model nepotpunih informacija za kreditne spread-ove |
+            | **Extensions to the Gaussian Copula: Random Recovery and Random Factor Loadings** | Leif Andersen, Jakob Sidenius | 2004 | Stohastički oporavak u modelima kreditnog rizika |
+            | **The KMV Approach to Credit Risk** | Kealhofer, McQuown, Vasicek | 1990s | KMV kalibracija i Distance-to-Default (DD) |
+            | **Hawkes Processes and Their Applications in Finance** | Emmanuel Bacry, Iacopo Mastromatteo, Jean-François Muzy | 2015 | Pregled primjene Hawkes procesa u finansijama |
+            | **Credit Default Swaps and the Credit Crisis** | David X. Li | 2006 | CDS i korelacioni modeli (Gaussian copula) |
+            
+            ### 🌐 Izvori podataka
+            
+            | Izvor | Link | Opis |
+            |-------|------|------|
+            | **FRED (Federal Reserve Economic Data)** | [fred.stlouisfed.org](https://fred.stlouisfed.org) | Treasury stope, BAA korporativni prinosi, makro podaci |
+            | **Yahoo Finance** | [finance.yahoo.com](https://finance.yahoo.com) | Cene akcija, tržišna kapitalizacija, volatilnost |
+            | **Financial Modeling Prep** | [financialmodelingprep.com](https://financialmodelingprep.com) | Bilansni podaci i finansijski izveštaji (API) |
+            | **SEC EDGAR** | [sec.gov/edgar](https://sec.gov/edgar) | 10-K i 10-Q izveštaji kompanija |
+            | **Moody's Default Rates** | [moodys.com](https://www.moodys.com) | Istorijske stope defaulta po rejtingu |
+            | **S&P Global Default Studies** | [spglobal.com](https://www.spglobal.com) | Kumulativne stope defaulta i recovery rates |
+            
+            ### 💡 Konceptualni doprinosi
+            
+            | Koncept | Opis | Ključni autori |
+            |---------|------|----------------|
+            | **KMV pristup** | Izvlačenje nevidljive imovine (V0) i volatilnosti iz tržišnih podataka | Kealhofer, McQuown, Vasicek |
+            | **Distance-to-Default (DD)** | Mjera udaljenosti imovine od barijere bankrota | Merton, KMV |
+            | **Hawkes proces** | Samopobudni proces za modeliranje klasterovanja default-a | Hawkes (1971), Bacry et al. (2015) |
+            | **Jump-Diffusion** | Kombinacija kontinuiranog GBM i diskretnih skokova | Zhou (2001) |
+            | **Regime-Switching** | Markovljevi lanci za prelazak između normalnog i stresnog režima | Hamilton (1989), Giesecke |
+            | **Stohastički oporavak** | Stopa oporavka negativno korelisana sa intenzitetom bankrota | Andersen & Sidenius (2004) |
+            | **Nepotpune informacije** | Šum na opservaciju barijere zbog kašnjenja u računovodstvenim izveštajima | Duffie & Lando (2001) |
+            """)
+            
+        # Dodaj biblioteku i na dno sidebar-a (opciono)
+        with st.sidebar.expander("📚 Literatura", expanded=False):
+            st.markdown("""
+            - **Merton (1974)** – Strukturni model
+            - **Zhou (2001)** – Jump-Diffusion
+            - **Duffie & Lando (2001)** – Nepotpune informacije
+            - **Collin-Dufresne & Goldstein (2001)** – Dinamička barijera
+            - **Andersen & Sidenius (2004)** – Stohastički oporavak
+            - **Hull (2021)** – Derivati i upravljanje rizikom
+            - **FRED / Yahoo Finance** – Podaci
+            """)
 else:
     st.info("👈 Podesi parametre u bočnom meniju i klikni 'Pokreni simulaciju'")
     st.markdown("""
