@@ -26,20 +26,22 @@ st.sidebar.header("⚙️ Simulation Parameters")
 
 ticker_option = st.sidebar.radio(
     "Select portfolio:",
-    ["Top 50 S&P 500", "Custom tickers"]
+    ["Popular S&P 500 (50 stocks)", "Custom tickers"]
 )
 
-if ticker_option == "Top 50 S&P 500":
+if ticker_option == "Popular S&P 500 (50 stocks)":
     tickers = MarketDataExtractor50.get_sp500_tickers(50)
 else:
+    st.sidebar.markdown("💡 Enter **any number** of tickers (comma-separated).")
     custom_tickers = st.sidebar.text_input(
-        "Enter tickers (comma separated):",
-        value="AAPL, MSFT, NVDA, GOOGL, AMZN"
+        "Tickers (e.g., AAPL, MSFT, TSLA):",
+        value="AAPL, MSFT, NVDA, GOOGL, AMZN, TSLA, BRK-B, JPM, V, PG"
     )
-    tickers = [t.strip() for t in custom_tickers.split(',')]
+    tickers = [t.strip() for t in custom_tickers.split(',') if t.strip()]
 
+# Date range – default from 2000
 end_date = datetime.today()
-default_start = end_date - timedelta(days=2*365)
+default_start = datetime(2000, 1, 1)
 start_date = st.sidebar.date_input("Start date:", default_start)
 end_date = st.sidebar.date_input("End date:", end_date)
 
@@ -553,4 +555,5 @@ else:
     - **VaR / CVaR** – tail risk measures
     - **Interactive paths** – asset and intensity trajectories
     - **Sector analysis** – risk aggregation by sector
+    - **Unlimited tickers** – analyse any listed company, from 2000 to today
     """)
